@@ -192,8 +192,8 @@ def print_up_to_date(remote):
 )
 @click.argument('prefixes', 'prefix', nargs=-1)
 def subtree_update(is_all, is_dry_run, squash, prefixes):
-    '''Update the given subtrees in this repo. Divines their remote from the
-    basename of the given prefix. Prompts the user when there are multiple
+    '''Update the given subtrees in this repository. Divines their remote from
+    the basename of the given prefix. Prompts the user when there are multiple
     possibilities.'''
     local_repo = git.Repo(os.getcwd())
     if is_all:

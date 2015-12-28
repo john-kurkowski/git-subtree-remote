@@ -1,4 +1,4 @@
-'''Git subcommand `git subtree-update <prefix>` to update the given subtree in
+'''Git subcommand `git subtree-update <prefix>` to update the given subtrees in
 the current Git repository.'''
 
 from setuptools import find_packages

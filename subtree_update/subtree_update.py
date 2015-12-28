@@ -91,6 +91,7 @@ def repo_for_partial_name(repo_partial_name, headers):
     elif len(repos_with_name) == 1 or is_confident_match(scores)[0]:
         repo_i = 0
     else:
+        click.echo('') # Newline after surrounding progress bar
         repo_i = prompt_to_disambiguate_repos(repo_partial_name, repos_with_name)
 
     return repos_with_name[repo_i]
@@ -229,6 +230,7 @@ def subtree_update(is_all, is_dry_run, squash, prefixes):
     with click.progressbar(subtree_remotes, label=updating_label) as progressbar:
         for remote in progressbar:
             if not remote.is_ahead:
+                click.echo('') # Newline after surrounding progress bar
                 print_up_to_date(remote)
                 continue
 

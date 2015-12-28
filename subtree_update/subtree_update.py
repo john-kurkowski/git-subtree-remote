@@ -12,6 +12,7 @@ from .utilities import RatedSemaphore
 
 
 API_BASE = 'https://api.github.com'
+SUBTREE_DIR_RE = re.compile(r'git-subtree-dir: (?P<git_subtree_dir>\S.*)')
 SUBTREE_SPLIT_RE = re.compile(r'git-subtree-split: (?P<git_subtree_split>[a-z0-9]+)')
 
 
@@ -32,6 +33,15 @@ class SubtreeRemote(collections.namedtuple('SubtreeRemote', (
     @property
     def is_ahead(self):
         return bool(self.commits_since['ahead_by'])
+
+
+def all_subtree_prefixes(local_repo):
+    '''Finds all current subtree prefixes in the current branch of the current
+    repository.'''
+    subtree_splits = local_repo.git.log(grep='git-subtree-dir: ')
+    prefixes = set(SUBTREE_DIR_RE.findall(subtree_splits))
+    existing_prefixes = (prefix for prefix in prefixes if os.path.exists(prefix))
+    return sorted(existing_prefixes)
 
 
 def last_split_ref_for_prefix(local_repo, prefix):
@@ -165,6 +175,11 @@ def print_up_to_date(remote):
 
 @click.command()
 @click.option(
+    'is_all', '--all',
+    is_flag=True,
+    help='''Update all subtrees in the repo.''',
+)
+@click.option(
     'is_dry_run', '-n', '--dry-run',
     is_flag=True,
     help='''Don't actually update anything, just show what's outdated.'''
@@ -175,11 +190,18 @@ def print_up_to_date(remote):
     help='Pass through `git subtree --squash ...`',
 )
 @click.argument('prefixes', 'prefix', nargs=-1)
-def subtree_update(is_dry_run, squash, prefixes):
+def subtree_update(is_all, is_dry_run, squash, prefixes):
     '''Update the given subtrees in this repo. Divines their remote from the
     basename of the given prefix. Prompts the user when there are multiple
     possibilities.'''
     local_repo = git.Repo(os.getcwd())
+    if is_all:
+        prefixes = all_subtree_prefixes(local_repo)
+        if not prefixes:
+            raise click.BadParameter('No subtrees found in this repo')
+    elif not prefixes:
+        raise click.BadParameter('At least 1 subtree prefix is required (or set --all)')
+
     subtrees = [
         Subtree(prefix, last_split_ref_for_prefix(local_repo, prefix))
         for prefix in prefixes

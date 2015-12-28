@@ -35,6 +35,20 @@ class SubtreeRemote(collections.namedtuple('SubtreeRemote', (
         return bool(self.commits_since['ahead_by'])
 
 
+def validate_subtrees(local_repo, is_all, prefixes):
+    if is_all:
+        prefixes = all_subtree_prefixes(local_repo)
+        if not prefixes:
+            raise click.BadParameter('No subtrees found in this repo')
+    elif not prefixes:
+        raise click.BadParameter('At least 1 subtree prefix is required (or set --all)')
+
+    return [
+        Subtree(prefix, last_split_ref_for_prefix(local_repo, prefix))
+        for prefix in prefixes
+    ]
+
+
 def all_subtree_prefixes(local_repo):
     '''Finds all current subtree prefixes in the current branch of the current
     repository.'''
@@ -47,6 +61,17 @@ def all_subtree_prefixes(local_repo):
 def last_split_ref_for_prefix(local_repo, prefix):
     subtree_splits = local_repo.git.log(grep='git-subtree-dir: {}'.format(prefix.rstrip('/')))
     return SUBTREE_SPLIT_RE.search(subtree_splits).group('git_subtree_split')
+
+
+def rate_limit_find_subtree_remote():
+    headers = remote_headers()
+    search_max_per_minute = 30 if 'Authorization' in headers else 10
+    search_buffer_s = 30
+    search_rate_limit = RatedSemaphore(search_max_per_minute, 60 + search_buffer_s)
+    def rate_limited_find(subtree):
+        with search_rate_limit:
+            return find_subtree_remote(subtree, headers)
+    return rate_limited_find
 
 
 def remote_headers():
@@ -118,6 +143,7 @@ def prompt_to_disambiguate_repos(query, repos):
     same query.'''
     max_repo_len = max(len(repo['html_url']) for repo in repos) + 3
     number_choice_format = '{:<4} {:<' + str(max_repo_len) + '} {:>}'
+
     number_prompt = 'Multiple remote repos found for {}.\n{}\n{}\n\nEnter a number 1-{}'.format(
         query,
         number_choice_format.format('', 'Remote', 'Score'),
@@ -157,7 +183,9 @@ def print_subtree_diff(subtree_remotes):
     max_prefix_len = max(len(remote.subtree.prefix) for remote in subtree_remotes) + 3
     max_repo_len = max(len(remote.repo['html_url']) for remote in subtree_remotes) + 3
     row_format = '{:<' + str(max_prefix_len) + '}{:<' + str(max_repo_len) + '}{:<15}{:<30}'
+
     click.secho(row_format.format('Prefix', 'Remote', 'Ahead By', 'Tags Since', underline=True))
+
     for remote in subtree_remotes:
         click.secho(row_format.format(
             remote.subtree.prefix,
@@ -196,26 +224,9 @@ def subtree_update(is_all, is_dry_run, squash, prefixes):
     the basename of the given prefix. Prompts the user when there are multiple
     possibilities.'''
     local_repo = git.Repo(os.getcwd())
-    if is_all:
-        prefixes = all_subtree_prefixes(local_repo)
-        if not prefixes:
-            raise click.BadParameter('No subtrees found in this repo')
-    elif not prefixes:
-        raise click.BadParameter('At least 1 subtree prefix is required (or set --all)')
+    subtrees = validate_subtrees(local_repo, is_all, prefixes)
 
-    subtrees = [
-        Subtree(prefix, last_split_ref_for_prefix(local_repo, prefix))
-        for prefix in prefixes
-    ]
-
-    headers = remote_headers()
-    search_max_per_minute = 30 if 'Authorization' in headers else 10
-    search_buffer_s = 30
-    search_rate_limit = RatedSemaphore(search_max_per_minute, 60 + search_buffer_s)
-    def rate_limited_find(subtree):
-        with search_rate_limit:
-            return find_subtree_remote(subtree, headers)
-
+    rate_limited_find = rate_limit_find_subtree_remote()
     with click.progressbar(subtrees, label='Finding subtree remotes') as progressbar:
         subtree_remotes = [
             rate_limited_find(subtree)

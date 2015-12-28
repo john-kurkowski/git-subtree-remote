@@ -1,10 +1,7 @@
 '''Functions to diff and update subtrees in the current Git repository.'''
 
-import logging
-import operator
 import os
 import re
-import sys
 
 import click
 import git

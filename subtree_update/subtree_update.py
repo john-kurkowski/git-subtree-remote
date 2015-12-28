@@ -32,7 +32,7 @@ class SubtreeRemote(collections.namedtuple('SubtreeRemote', (
 
 
 def last_split_ref_for_prefix(local_repo, prefix):
-    subtree_splits = local_repo.git.log(grep='git-subtree-dir: {}'.format(prefix))
+    subtree_splits = local_repo.git.log(grep='git-subtree-dir: {}'.format(prefix.rstrip('/')))
     return SUBTREE_SPLIT_RE.search(subtree_splits).group('git_subtree_split')
 
 
@@ -50,7 +50,7 @@ def remote_headers():
 
 def find_subtree_remote(subtree, headers):
     # TODO: this isn't a universal assumption
-    repo_partial_name = os.path.basename(subtree.prefix)
+    repo_partial_name = os.path.basename(subtree.prefix.rstrip('/'))
 
     remote_repo = repo_for_partial_name(repo_partial_name, headers)
     commits_since = repo_commits_since(remote_repo, subtree.last_split_ref, headers)

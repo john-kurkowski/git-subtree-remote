@@ -1,4 +1,5 @@
-'''TODO'''
+'''Adds Git subcommand `git subtree-update <prefix>` to update the given
+subtree in the current Git repository.'''
 
 from setuptools import find_packages
 from setuptools import setup
@@ -16,6 +17,8 @@ setup(
         ),
     },
     install_requires=[
-        'gitpython>=1.0.1',
+        'click >= 6.2, < 7',
+        'gitpython >= 1.0.1, < 2',
+        'requests >= 2.9.1, < 3',
     ],
 )

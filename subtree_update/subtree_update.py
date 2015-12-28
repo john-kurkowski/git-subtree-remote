@@ -192,10 +192,11 @@ def subtree_update(is_dry_run, squash, prefixes):
         with search_rate_limit:
             return find_subtree_remote(subtree, headers)
 
-    subtree_remotes = [
-        rate_limited_find(subtree)
-        for subtree in subtrees
-    ]
+    with click.progressbar(subtrees, label='Finding subtree remotes') as progressbar:
+        subtree_remotes = [
+            rate_limited_find(subtree)
+            for subtree in progressbar
+        ]
 
     if is_dry_run:
         print_subtree_diff(subtree_remotes)

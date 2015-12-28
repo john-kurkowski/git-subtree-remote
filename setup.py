@@ -11,6 +11,13 @@ setup(
     url='https://github.com/john-kurkowski/git-subtree-update',
     description=__doc__,
     packages=find_packages('.'),
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Environment :: Console',
+        'License :: OSI Approved :: BSD License',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: Software Development :: Version Control',
+    ],
     entry_points={
         'console_scripts': (
             'git-subtree-update = subtree_update:subtree_update',

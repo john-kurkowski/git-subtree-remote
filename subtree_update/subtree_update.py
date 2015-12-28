@@ -8,6 +8,8 @@ import click
 import git
 import requests
 
+from .utilities import RatedSemaphore
+
 
 API_BASE = 'https://api.github.com'
 SUBTREE_SPLIT_RE = re.compile(r'git-subtree-split: (?P<git_subtree_split>[a-z0-9]+)')
@@ -184,8 +186,14 @@ def subtree_update(is_dry_run, squash, prefixes):
     ]
 
     headers = remote_headers()
+    search_max_per_minute = 30 if 'Authorization' in headers else 10
+    search_rate_limit = RatedSemaphore(search_max_per_minute, 60)
+    def rate_limited_find(subtree):
+        with search_rate_limit:
+            return find_subtree_remote(subtree, headers)
+
     subtree_remotes = [
-        find_subtree_remote(subtree, headers)
+        rate_limited_find(subtree)
         for subtree in subtrees
     ]
 

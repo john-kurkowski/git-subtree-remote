@@ -14,9 +14,8 @@ import requests
 SUBTREE_SPLIT_RE = re.compile(r'git-subtree-split: (?P<git_subtree_split>[a-z0-9]+)')
 
 
-def last_split_ref_for_prefix(prefix):
-    repo = git.Repo(os.getcwd())
-    subtree_splits = repo.git.log(grep='git-subtree-dir: {}'.format(prefix))
+def last_split_ref_for_prefix(local_repo, prefix):
+    subtree_splits = local_repo.git.log(grep='git-subtree-dir: {}'.format(prefix))
     return SUBTREE_SPLIT_RE.search(subtree_splits).group('git_subtree_split')
 
 
@@ -97,15 +96,21 @@ def print_subtree_diff(prefix, repo, commits_since, tags):
     is_flag=True,
     help='''Don't actually update anything, just show what would be done.'''
 )
+@click.option(
+    'squash', '--squash',
+    is_flag=True,
+    help='Pass through `git subtree --squash ...',
+)
 @click.argument('prefix')
-def subtree_update(prefix, is_dry_run):
+def subtree_update(is_dry_run, squash, prefix):
     '''Update the given subtrees in this repo. Divines their remote from the
     basename of the given prefix. Prompts the user when there are multiple
     possibilities.'''
     # TODO: this isn't a universal assumption
     repo_partial_name = os.path.basename(prefix)
 
-    last_split_ref = last_split_ref_for_prefix(prefix)
+    local_repo = git.Repo(os.getcwd())
+    last_split_ref = last_split_ref_for_prefix(local_repo, prefix)
 
     headers = remote_headers()
     remote_repo = repo_for_partial_name(repo_partial_name, headers)
@@ -117,4 +122,12 @@ def subtree_update(prefix, is_dry_run):
     elif is_dry_run:
         print_subtree_diff(prefix, remote_repo, commits_since, tags)
     else:
-        raise NotImplementedError('Actually executing the update: TODO')
+        subtree_args = ['pull', remote_repo['git_url'], 'master']
+
+        subtree_kwargs = {'prefix': prefix}
+        if squash:
+            subtree_kwargs['squash'] = True
+
+        local_repo.git.subtree(*subtree_args, **subtree_kwargs)
+
+        click.echo(local_repo.git.status())

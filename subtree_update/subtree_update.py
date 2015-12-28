@@ -209,7 +209,8 @@ def subtree_update(is_all, is_dry_run, squash, prefixes):
 
     headers = remote_headers()
     search_max_per_minute = 30 if 'Authorization' in headers else 10
-    search_rate_limit = RatedSemaphore(search_max_per_minute, 60)
+    search_buffer_s = 30
+    search_rate_limit = RatedSemaphore(search_max_per_minute, 60 + search_buffer_s)
     def rate_limited_find(subtree):
         with search_rate_limit:
             return find_subtree_remote(subtree, headers)

@@ -9,6 +9,7 @@ import git
 import requests
 
 
+API_BASE = 'https://api.github.com'
 SUBTREE_SPLIT_RE = re.compile(r'git-subtree-split: (?P<git_subtree_split>[a-z0-9]+)')
 
 
@@ -59,9 +60,10 @@ def find_subtree_remote(subtree, headers):
 
 
 def repo_for_partial_name(repo_partial_name, headers):
-    '''Finds remote repositories matching the given name. Prompts user to
-    choose one if multiple match.'''
-    search_url = 'https://api.github.com/search/repositories'
+    '''Finds remote repositories matching the given name. If multiple match,
+    picks the top ranked according to the search API. If their ranks are close,
+    prompts user to choose one manually.'''
+    search_url = '{}/search/repositories'.format(API_BASE)
     search_params = {
         'q': repo_partial_name,
         'in': 'name',
@@ -71,24 +73,52 @@ def repo_for_partial_name(repo_partial_name, headers):
     search_json = search_resp.json()
 
     repos_with_name = [repo for repo in search_json['items'] if repo['name'] == repo_partial_name]
-    repo_i = 0 if len(repos_with_name) < 2 else -1
-
-    max_repo_len = max(len(repo['full_name']) for repo in repos_with_name) + 3
-    number_choice_format = '{:<4} {:<' + str(max_repo_len) + '} {:>}'
-    number_prompt = 'Multiple remote repos found for {}.\n{}\n{}\n\nEnter a number 1-{}'.format(
-        repo_partial_name,
-        number_choice_format.format('', 'Remote', 'Score'),
-        '\n'.join(
-            number_choice_format.format('[{}]'.format(i + 1), repo['full_name'], repo['score'])
-            for i, repo in enumerate(repos_with_name)
-        ),
-        len(repos_with_name),
-    )
-
-    while repo_i < 0 or len(repos_with_name) <= repo_i:
-        repo_i = click.prompt(number_prompt, type=int) - 1
+    scores = [repo['score'] for repo in repos_with_name]
+    if not repos_with_name:
+        raise ValueError('No remotes found for {}'.format(repo_partial_name))
+    elif len(repos_with_name) == 1 or is_confident_match(scores)[0]:
+        repo_i = 0
+    else:
+        repo_i = prompt_to_disambiguate_repos(repo_partial_name, repos_with_name)
 
     return repos_with_name[repo_i]
+
+
+def is_confident_match(scores):
+    '''Return an array of bools whether the corresponding score is a confident
+    match, according to the search API ranking.
+
+    Interface inspired by http://stackoverflow.com/a/22357811/62269. However,
+    that function won't work here, because there aren't enough input points
+    (usually less than 5). Instead, we tailor the definition of "outlier" to
+    scores typically encountered from GitHub's search API.'''
+    high_score = 50
+    high_difference = 30
+    result = [False] * len(scores)
+    if scores[0] > high_score and scores[0] - scores[1] > high_difference:
+        result[0] = True
+    return result
+
+
+def prompt_to_disambiguate_repos(query, repos):
+    '''Prompt the user to pick from the given repositories that all matched the
+    same query.'''
+    max_repo_len = max(len(repo['html_url']) for repo in repos) + 3
+    number_choice_format = '{:<4} {:<' + str(max_repo_len) + '} {:>}'
+    number_prompt = 'Multiple remote repos found for {}.\n{}\n{}\n\nEnter a number 1-{}'.format(
+        query,
+        number_choice_format.format('', 'Remote', 'Score'),
+        '\n'.join(
+            number_choice_format.format('[{}]'.format(i + 1), repo['html_url'], repo['score'])
+            for i, repo in enumerate(repos)
+        ),
+        len(repos),
+    )
+
+    repo_i = -1
+    while repo_i < 0 or len(repos) <= repo_i:
+        repo_i = click.prompt(number_prompt, type=int) - 1
+    return repo_i
 
 
 def repo_commits_since(repo, since_ref, headers):
@@ -112,13 +142,13 @@ def print_subtree_diff(subtree_remotes):
         return
 
     max_prefix_len = max(len(remote.subtree.prefix) for remote in subtree_remotes) + 3
-    max_repo_len = max(len(remote.repo['full_name']) for remote in subtree_remotes) + 3
+    max_repo_len = max(len(remote.repo['html_url']) for remote in subtree_remotes) + 3
     row_format = '{:<' + str(max_prefix_len) + '}{:<' + str(max_repo_len) + '}{:<15}{:<30}'
     click.secho(row_format.format('Prefix', 'Remote', 'Ahead By', 'Tags Since', underline=True))
     for remote in subtree_remotes:
         click.secho(row_format.format(
             remote.subtree.prefix,
-            remote.repo['full_name'],
+            remote.repo['html_url'],
             remote.commits_since['ahead_by'] or '(up-to-date)',
             ', '.join(sorted(tag['name'] for tag in remote.tags_since)) or '(none)',
         ))
@@ -127,7 +157,7 @@ def print_subtree_diff(subtree_remotes):
 def print_up_to_date(remote):
     click.echo('{} already up-to-date with {}.'.format(
         remote.subtree.prefix,
-        remote.repo['full_name'],
+        remote.repo['html_url'],
     ))
 
 

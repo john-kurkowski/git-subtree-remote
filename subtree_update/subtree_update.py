@@ -140,7 +140,7 @@ def is_confident_match(scores):
 
 def prompt_to_disambiguate_repos(query, repos):
     '''Prompt the user to pick from the given repositories that all matched the
-    same query.'''
+    same query. Returns the 0-based index picked.'''
     max_repo_len = max(len(repo['html_url']) for repo in repos) + 3
     number_choice_format = '{:<4} {:<' + str(max_repo_len) + '} {:>}'
 
@@ -154,9 +154,7 @@ def prompt_to_disambiguate_repos(query, repos):
         len(repos),
     )
 
-    repo_i = -1
-    while repo_i < 0 or len(repos) <= repo_i:
-        repo_i = click.prompt(number_prompt, type=int) - 1
+    repo_i = click.prompt(number_prompt, type=click.IntRange(1, len(repos))) - 1
     return repo_i
 
 

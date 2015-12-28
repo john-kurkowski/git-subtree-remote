@@ -225,17 +225,19 @@ def subtree_update(is_all, is_dry_run, squash, prefixes):
         print_subtree_diff(subtree_remotes)
         return
 
-    for remote in subtree_remotes:
-        if not remote.is_ahead:
-            print_up_to_date(remote)
-            continue
+    updating_label = 'Updating {} subtrees'.format(len(subtree_remotes))
+    with click.progressbar(subtree_remotes, label=updating_label) as progressbar:
+        for remote in progressbar:
+            if not remote.is_ahead:
+                print_up_to_date(remote)
+                continue
 
-        subtree_args = ['pull', remote.repo['git_url'], 'master']
+            subtree_args = ['pull', remote.repo['git_url'], 'master']
 
-        subtree_kwargs = {'prefix': remote.subtree.prefix}
-        if squash:
-            subtree_kwargs['squash'] = True
+            subtree_kwargs = {'prefix': remote.subtree.prefix}
+            if squash:
+                subtree_kwargs['squash'] = True
 
-        local_repo.git.subtree(*subtree_args, **subtree_kwargs)
+            local_repo.git.subtree(*subtree_args, **subtree_kwargs)
 
     click.echo(local_repo.git.status())

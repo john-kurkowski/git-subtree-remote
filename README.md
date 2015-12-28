@@ -14,7 +14,7 @@ Automatic diff and update of my subtrees got a lot easier.
 
 If your subtree prefixes don't follow this basename convention or aren't on GitHub, `git subtree-update` won't help you. But I'm interested in PRs to make this more general!
 
-Also, keep an eye on the author of the above article. The author is getting Git to record `git-subtree-repo: <repo-url-here>` in subtree commits. That would make this project vastly simpler. Or outright able to be folded into Git's own subtree script.
+Also, keep an eye on the author of the above article. The author is getting Git to record `git-subtree-repo: <repo-url-here>` in subtree commits. That would make this project vastly simpler. Or outright foldable into Git's own subtree script.
 
 ## Installation
 

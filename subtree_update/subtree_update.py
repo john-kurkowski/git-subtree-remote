@@ -1,5 +1,6 @@
 '''Functions to diff and update subtrees in the current Git repository.'''
 
+import collections
 import os
 import re
 
@@ -9,6 +10,25 @@ import requests
 
 
 SUBTREE_SPLIT_RE = re.compile(r'git-subtree-split: (?P<git_subtree_split>[a-z0-9]+)')
+
+
+class Subtree(collections.namedtuple('Subtree', (
+        'prefix',
+        'last_split_ref',
+    ))):
+    pass
+
+
+class SubtreeRemote(collections.namedtuple('SubtreeRemote', (
+        'subtree',
+        'repo',
+        'commits_since',
+        'tags_since',
+    ))):
+
+    @property
+    def is_ahead(self):
+        return bool(self.commits_since['ahead_by'])
 
 
 def last_split_ref_for_prefix(local_repo, prefix):
@@ -28,6 +48,16 @@ def remote_headers():
     return headers
 
 
+def find_subtree_remote(subtree, headers):
+    # TODO: this isn't a universal assumption
+    repo_partial_name = os.path.basename(subtree.prefix)
+
+    remote_repo = repo_for_partial_name(repo_partial_name, headers)
+    commits_since = repo_commits_since(remote_repo, subtree.last_split_ref, headers)
+    tags_since = tags_in_commits(remote_repo, commits_since['commits'], headers)
+    return SubtreeRemote(subtree, remote_repo, commits_since, tags_since)
+
+
 def repo_for_partial_name(repo_partial_name, headers):
     '''Finds remote repositories matching the given name. Prompts user to
     choose one if multiple match.'''
@@ -45,7 +75,8 @@ def repo_for_partial_name(repo_partial_name, headers):
 
     max_repo_len = max(len(repo['full_name']) for repo in repos_with_name) + 3
     number_choice_format = '{:<4} {:<' + str(max_repo_len) + '} {:>}'
-    number_prompt = 'Multiple remotes repos found.\n{}\n{}\n\nEnter a number 1-{}'.format(
+    number_prompt = 'Multiple remote repos found for {}.\n{}\n{}\n\nEnter a number 1-{}'.format(
+        repo_partial_name,
         number_choice_format.format('', 'Remote', 'Score'),
         '\n'.join(
             number_choice_format.format('[{}]'.format(i + 1), repo['full_name'], repo['score'])
@@ -74,16 +105,29 @@ def tags_in_commits(repo, commits, headers):
     return [tag for tag in tags_resp.json() if tag['commit']['sha'] in commits_by_sha]
 
 
-def print_subtree_diff(prefix, repo, commits_since, tags):
-    max_prefix_len = len(prefix) + 3
-    max_repo_len = len(repo['full_name']) + 3
+def print_subtree_diff(subtree_remotes):
+    '''Prints a summary diff of subtree remotes that are ahead.'''
+    if len(subtree_remotes) == 1 and not subtree_remotes[0].is_ahead:
+        print_up_to_date(subtree_remotes[0])
+        return
+
+    max_prefix_len = max(len(remote.subtree.prefix) for remote in subtree_remotes) + 3
+    max_repo_len = max(len(remote.repo['full_name']) for remote in subtree_remotes) + 3
     row_format = '{:<' + str(max_prefix_len) + '}{:<' + str(max_repo_len) + '}{:<15}{:<30}'
     click.secho(row_format.format('Prefix', 'Remote', 'Ahead By', 'Tags Since', underline=True))
-    click.secho(row_format.format(
-        prefix,
-        repo['full_name'],
-        commits_since['ahead_by'],
-        ', '.join(sorted(tag['name'] for tag in tags)) or '(none)',
+    for remote in subtree_remotes:
+        click.secho(row_format.format(
+            remote.subtree.prefix,
+            remote.repo['full_name'],
+            remote.commits_since['ahead_by'] or '(up-to-date)',
+            ', '.join(sorted(tag['name'] for tag in remote.tags_since)) or '(none)',
+        ))
+
+
+def print_up_to_date(remote):
+    click.echo('{} already up-to-date with {}.'.format(
+        remote.subtree.prefix,
+        remote.repo['full_name'],
     ))
 
 
@@ -91,40 +135,45 @@ def print_subtree_diff(prefix, repo, commits_since, tags):
 @click.option(
     'is_dry_run', '-n', '--dry-run',
     is_flag=True,
-    help='''Don't actually update anything, just show what would be done.'''
+    help='''Don't actually update anything, just show what's outdated.'''
 )
 @click.option(
     'squash', '--squash',
     is_flag=True,
-    help='Pass through `git subtree --squash ...',
+    help='Pass through `git subtree --squash ...`',
 )
-@click.argument('prefix')
-def subtree_update(is_dry_run, squash, prefix):
+@click.argument('prefixes', 'prefix', nargs=-1)
+def subtree_update(is_dry_run, squash, prefixes):
     '''Update the given subtrees in this repo. Divines their remote from the
     basename of the given prefix. Prompts the user when there are multiple
     possibilities.'''
-    # TODO: this isn't a universal assumption
-    repo_partial_name = os.path.basename(prefix)
-
     local_repo = git.Repo(os.getcwd())
-    last_split_ref = last_split_ref_for_prefix(local_repo, prefix)
+    subtrees = [
+        Subtree(prefix, last_split_ref_for_prefix(local_repo, prefix))
+        for prefix in prefixes
+    ]
 
     headers = remote_headers()
-    remote_repo = repo_for_partial_name(repo_partial_name, headers)
-    commits_since = repo_commits_since(remote_repo, last_split_ref, headers)
-    tags = tags_in_commits(remote_repo, commits_since['commits'], headers)
+    subtree_remotes = [
+        find_subtree_remote(subtree, headers)
+        for subtree in subtrees
+    ]
 
-    if not commits_since['ahead_by']:
-        click.echo('{} already up-to-date with {}.'.format(prefix, remote_repo['full_name']))
-    elif is_dry_run:
-        print_subtree_diff(prefix, remote_repo, commits_since, tags)
-    else:
-        subtree_args = ['pull', remote_repo['git_url'], 'master']
+    if is_dry_run:
+        print_subtree_diff(subtree_remotes)
+        return
 
-        subtree_kwargs = {'prefix': prefix}
+    for remote in subtree_remotes:
+        if not remote.is_ahead:
+            print_up_to_date(remote)
+            continue
+
+        subtree_args = ['pull', remote.repo['git_url'], 'master']
+
+        subtree_kwargs = {'prefix': remote.subtree.prefix}
         if squash:
             subtree_kwargs['squash'] = True
 
         local_repo.git.subtree(*subtree_args, **subtree_kwargs)
 
-        click.echo(local_repo.git.status())
+    click.echo(local_repo.git.status())

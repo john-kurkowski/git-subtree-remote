@@ -1,6 +1,6 @@
 # git-subtree-update
 
-Are your Git repository's **subtrees** up to date? **Can't remember the remote** you pulled them from? This Git subcommand `git subtree-update <prefix>` **diffs** and **updates** the given subtrees (or `--all` of them) in the current Git repository, based on their basenames.
+Are your Git repository's **subtrees** up to date? **Can't remember the remote** you pulled them from? This Git subcommand `git subtree-update <prefix>` **diffs** and **updates** the given subtrees (or `--all` of them) in the current Git repository, based on their prefixes.
 
 For example, if your subtree has a prefix of `path/to/vim-fireplace`, there's a good chance the remote was https://github.com/tpope/vim-fireplace.git. This subcommand looks that up and runs the appropriate `git subtree pull ...` for you.
 
@@ -14,7 +14,15 @@ Automatic diff and update of my subtrees got a lot easier.
 
 ## Limitations
 
-If your subtree prefixes don't follow this basename convention or aren't on GitHub, `git subtree-update` won't help you. But I'm interested in PRs to make this more general!
+Your subtree remote must be on GitHub. The subtree prefix must match one of the following rules. The examples all match the GitHub repo tpope/vim-fireplace.
+
+| Rule | Example Prefix |
+| ---- | -------------- |
+| The dirname + basename must be a full, exact GitHub repo name. | path/to/tpope/vim-fireplace |
+| The basename is a camelized, full GitHub repo name. | path/to/tpope-vim-fireplace |
+| The basename matches an short, exact GitHub repo name (no author). | path/to/vim-fireplace |
+
+If your subtree prefixes aren't on GitHub or don't follow this convention, `git subtree-update` won't help you. But I'm interested in PRs to make this more general!
 
 Also, keep an eye on the author of [the above article][The power of Git subtree]. The author is getting Git to record `git-subtree-repo: <repo-url-here>` in subtree commits. That would make this project vastly simpler. Or outright foldable into Git's own subtree command.
 

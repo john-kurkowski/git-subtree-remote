@@ -51,13 +51,70 @@ def remote_headers():
 
 
 def find_subtree_remote(subtree, headers):
-    # TODO: this isn't a universal assumption
-    repo_partial_name = os.path.basename(subtree.prefix.rstrip('/'))
+    '''Finds a local subtree's remote based on its prefix.
 
-    remote_repo = repo_for_partial_name(repo_partial_name, headers)
+    1. Is the prefix's dirname + basename an exact GitHub repo id? E.g.
+       path/to/tpope/vim-markdown
+    2. Is the basename a kebab-cased GitHub repo id? E.g. GitHub
+       tpope/vim-markdown -> local path/to/tpope-vim-markdown
+    3. Assume the author is missing; search GitHub for the basename. Prompt the
+       user to disambiguate multiple hits.
+
+    If the subtree's remote isn't somehow, even partially encoded in the
+    prefix, you're looking at the wrong library.
+    '''
+    remote_repo = None
+
+    prefix = subtree.prefix.rstrip('/')
+    split = prefix.rsplit(os.sep, 2)
+    if len(split) >= 2:
+        repo_exact_name = os.path.join(*split[-2:])
+        try:
+            remote_repo = repo_for_exact_name(repo_exact_name, headers)
+        except KeyError:
+            pass
+
+    repo_partial_name = os.path.basename(prefix)
+    if not remote_repo and '-' in repo_partial_name:
+        try:
+            remote_repo = repo_for_kebab_name(repo_partial_name, headers)
+        except KeyError:
+            pass
+
+    if not remote_repo:
+        remote_repo = repo_for_partial_name(repo_partial_name, headers)
+
     commits_since = repo_commits_since(remote_repo, subtree.last_split_ref, headers)
     tags_since = tags_in_commits(remote_repo, commits_since['commits'], headers)
     return SubtreeRemote(subtree, remote_repo, commits_since, tags_since)
+
+
+def repo_for_exact_name(repo_exact_name, headers):
+    '''Returns the GitHub repo with the given owner/name string id. Raises
+    KeyError if no repo found.'''
+    repo_url = '{}/repos/{}'.format(API_BASE, repo_exact_name)
+    repo_resp = requests.get(repo_url, headers=headers)
+    try:
+        repo_resp.raise_for_status()
+    except requests.exceptions.HTTPError as http_ex:
+        if http_ex.response.status_code == 404:
+            raise KeyError('Not found: {}'.format(repo_exact_name))
+        else:
+            raise
+    return repo_resp.json()
+
+
+def repo_for_kebab_name(repo_partial_name, headers):
+    '''Returns the first, existing GitHub repo name contained in the
+    kebab-cased version. Raises KeyError if no repo found.'''
+    kebabs = repo_partial_name.split('-')
+    for i, _ in enumerate(kebabs):
+        repo_exact_name = '{}/{}'.format('-'.join(kebabs[0:i+1]), '-'.join(kebabs[i+1:]))
+        try:
+            return repo_for_exact_name(repo_exact_name, headers)
+        except KeyError as key_err:
+            pass
+    raise key_err
 
 
 def repo_for_partial_name(repo_partial_name, headers):

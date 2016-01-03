@@ -20,11 +20,11 @@ Your subtree remote must be on GitHub. The subtree prefix must match one of the 
 
 | Rule | Example Prefix |
 | ---- | -------------- |
-| The dirname + basename must be a full, exact GitHub repo name. | path/to/tpope/vim-fireplace |
+| The dirname + basename is a full, exact GitHub repo name. | path/to/tpope/vim-fireplace |
 | The basename is a camelized, full GitHub repo name. | path/to/tpope-vim-fireplace |
-| The basename matches an short, exact GitHub repo name (no author). | path/to/vim-fireplace |
+| The basename is a short (no author), exact GitHub repo name. | path/to/vim-fireplace |
 
-If your subtree prefixes aren't on GitHub or don't follow this convention, `git subtree-update` won't help you. But I'm interested in PRs to make this more general!
+If your subtree's remote isn't on GitHub or the subtree's prefix doesn't follow these conventions, `git subtree-update` won't help you. But I'm interested in PRs to make this more general!
 
 Also, keep an eye on the author of [the above article][The power of Git subtree]. The author is getting Git to record `git-subtree-repo: <repo-url-here>` in subtree commits. That would make this project vastly simpler. Or outright foldable into Git's own subtree command.
 

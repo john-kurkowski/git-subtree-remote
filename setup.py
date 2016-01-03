@@ -1,5 +1,7 @@
-'''Git subcommand `git subtree-update <prefix>` to update the given subtrees in
-the current Git repository.'''
+'''Are your Git repository's subtrees up to date? Can't remember the remote you
+pulled them from? This Git subcommand diffs, adds, and updates the given
+subtrees (or all) in the current Git repository, based on their
+paths/prefixes/basenames.'''
 
 from setuptools import find_packages
 from setuptools import setup

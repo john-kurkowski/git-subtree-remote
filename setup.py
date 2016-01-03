@@ -20,7 +20,7 @@ setup(
     ],
     entry_points={
         'console_scripts': (
-            'git-subtree-update = subtree_update:subtree_update',
+            'git-subtree-update = subtree_update.command:subtree_update',
         ),
     },
     install_requires=[

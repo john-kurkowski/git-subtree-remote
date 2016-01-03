@@ -12,16 +12,6 @@ from .local import validate_subtrees
 from .remote import rate_limit_find_subtree_remote
 
 
-def subtree_pull(local_repo, remote, squash):
-    subtree_args = ['pull', remote.repo['git_url'], 'master']
-
-    subtree_kwargs = {'prefix': remote.subtree.prefix}
-    if squash:
-        subtree_kwargs['squash'] = True
-
-    return local_repo.git.subtree(*subtree_args, **subtree_kwargs)
-
-
 def validate_subtree_remotes(local_repo, is_all, prefixes):
     try:
         subtrees = validate_subtrees(local_repo, is_all, prefixes)
@@ -69,15 +59,24 @@ def diff(is_all, prefixes):
 )
 @click.argument('prefixes', 'prefix', nargs=-1)
 def pull(is_all, squash, prefixes):
-    '''Update the given subtrees. Divines their remote from the given prefix.
-    Prompts the user when there are multiple possibilities.'''
+    '''Add or update the given subtrees. Divines their remote from the given
+    prefix. Prompts the user when there are multiple possibilities.'''
     local_repo = git.Repo(os.getcwd())
     subtree_remotes = validate_subtree_remotes(local_repo, is_all, prefixes)
     updating_label = 'Updating {} subtree(s)'.format(len(subtree_remotes))
     with click.progressbar(subtree_remotes, label=updating_label) as progressbar:
         for remote in progressbar:
-            if remote.is_ahead:
-                subtree_pull(local_repo, remote, squash)
+            subtree_args = [remote.repo['git_url'], 'master']
+            subtree_kwargs = {'prefix': remote.subtree.prefix}
+            if squash:
+                subtree_kwargs['squash'] = True
+
+            if not remote.subtree.exists:
+                subtree_args.insert(0, 'add')
+                local_repo.git.subtree(*subtree_args, **subtree_kwargs)
+            elif remote.is_ahead:
+                subtree_args.insert(0, 'pull')
+                local_repo.git.subtree(*subtree_args, **subtree_kwargs)
             else:
                 click.echo('') # Newline after surrounding progress bar
                 print_up_to_date(remote)

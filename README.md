@@ -1,6 +1,6 @@
 # git-subtree-update
 
-Are your Git repository's **subtrees** up to date? **Can't remember the remote** you pulled them from? This Git subcommand **diffs** and **updates** the given subtrees (or all) in the current Git repository, based on their paths/prefixes/basenames.
+Are your Git repository's **subtrees** up to date? **Can't remember the remote** you pulled them from? This Git subcommand **diffs**, **adds**, and **updates** the given subtrees (or all) in the current Git repository, based on their paths/prefixes/basenames.
 
 ## Example
 
@@ -10,13 +10,13 @@ If your subtree has a prefix of `path/to/vim-fireplace`, there's a good chance t
 
 [The power of Git subtree] notes that subtrees do not track the remote they came from. This makes them difficult to diff or keep up to date automatically. You have to remember where they came from, and/or write down the command you used to acquire the subtree in the first place.
 
-I have a _particular use case_ where my subtree prefixes' _basenames_ share their name with a repo on GitHub. Therefore, I can find them via GitHub's search API with confidence. For low confidence matches, I can prompt the user for a manual selection.
+I have a _particular use case_ where my subtree prefixes partially encode the remote name, a repo on GitHub. Therefore, I can find the remote via GitHub's search API with confidence. For low confidence matches, I can prompt the user for a manual selection.
 
 Automatic diff and update of my subtrees got a lot easier.
 
 ## Limitations
 
-Your subtree remote must be on GitHub. The subtree prefix must match one of the following rules. The examples all match the GitHub repo tpope/vim-fireplace.
+Your subtree remote must be on GitHub. The subtree prefix must match one of the following rules. The examples all resolve to the GitHub repo "tpope/vim-fireplace".
 
 | Rule | Example Prefix |
 | ---- | -------------- |
@@ -47,11 +47,15 @@ git subtree-update diff (path/to/some/subtree/prefix...|--all)
 
 ### Pull
 
-Same as `git subtree pull`, but you don't have to remember the remote. Or it can find and update _all_ your subtrees.
+Add or update the given subtrees.
 
 ```zsh
 git subtree-update pull (path/to/some/subtree/prefix...|--all)
 ```
+
+If the subtree doesn't exist, this is the same as `git subtree add`, but it looks up the GitHub remote for you.
+
+If the subtree exists, same as `git subtree pull`, but you don't have to remember the remote. Or it can find and update _all_ your subtrees.
 
 ### Advanced
 

@@ -14,10 +14,15 @@ class Subtree(collections.namedtuple('Subtree', (
         'prefix',
         'last_split_ref',
     ))):
-    pass
+
+    @property
+    def exists(self):
+        return bool(self.last_split_ref)
 
 
 def validate_subtrees(local_repo, is_all, prefixes):
+    '''Validates the --all flag or variadic subtree prefixes given to the
+    program.'''
     if is_all:
         prefixes = all_subtree_prefixes(local_repo)
         if not prefixes:
@@ -25,10 +30,13 @@ def validate_subtrees(local_repo, is_all, prefixes):
     elif not prefixes:
         raise ValueError('At least 1 subtree prefix is required (or set --all)')
 
-    return [
-        Subtree(prefix, last_split_ref_for_prefix(local_repo, prefix))
-        for prefix in prefixes
-    ]
+    def mk_subtree(prefix):
+        ref = None
+        if os.path.exists(prefix):
+            ref = last_split_ref_for_prefix(local_repo, prefix)
+        return Subtree(prefix, ref)
+
+    return [mk_subtree(prefix) for prefix in prefixes]
 
 
 def all_subtree_prefixes(local_repo):

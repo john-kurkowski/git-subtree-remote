@@ -1,8 +1,10 @@
 # git-subtree-update
 
-Are your Git repository's **subtrees** up to date? **Can't remember the remote** you pulled them from? This Git subcommand `git subtree-update <prefix>` **diffs** and **updates** the given subtrees (or `--all` of them) in the current Git repository, based on their prefixes.
+Are your Git repository's **subtrees** up to date? **Can't remember the remote** you pulled them from? This Git subcommand **diffs** and **updates** the given subtrees (or all) in the current Git repository, based on their paths/prefixes/basenames.
 
-For example, if your subtree has a prefix of `path/to/vim-fireplace`, there's a good chance the remote was https://github.com/tpope/vim-fireplace.git. This subcommand looks that up and runs the appropriate `git subtree pull ...` for you.
+## Example
+
+If your subtree has a prefix of `path/to/vim-fireplace`, there's a good chance the remote was https://github.com/tpope/vim-fireplace.git. This subcommand looks that up and runs the appropriate `git subtree pull` for you.
 
 ## Motivation
 
@@ -33,24 +35,26 @@ Also, keep an eye on the author of [the above article][The power of Git subtree]
 
 ## Usage
 
-In a Git repository with subtrees:
+Run the following in a Git repository with subtrees.
+
+### Diff
+
+See what subtrees are outdated.
 
 ```zsh
-git subtree-update path/to/some/subtree/prefix
+git subtree-update diff (path/to/some/subtree/prefix...|--all)
 ```
 
-Or update all subtrees:
+### Pull
+
+Same as `git subtree pull`, but you don't have to remember the remote. Or it can find and update _all_ your subtrees.
 
 ```zsh
-git subtree-update --all
+git subtree-update pull (path/to/some/subtree/prefix...|--all)
 ```
 
-Use `--dry-run` to see what subtrees are outdated:
+### Advanced
 
-```zsh
-git subtree-update --dry-run --all
-```
-
-This uses GitHub's search API, which is rate limited. The script can take a while if you're updating dozens of subtrees. Set your `GITHUB_TOKEN` env var to a GitHub API token to get a faster rate.
+This subcommand uses GitHub's search API, which is rate limited. The script can take a while if you're updating dozens of subtrees. Set your `GITHUB_TOKEN` env var to a GitHub API token to get a faster rate.
 
 [The power of Git subtree]: https://developer.atlassian.com/blog/2015/05/the-power-of-git-subtree/#hacking-on-git-subtree

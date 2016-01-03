@@ -1,6 +1,6 @@
-# git-subtree-update
+# git-subtree-remote
 
-Are your Git repository's **subtrees** up to date? **Can't remember the remote** you pulled them from? This Git subcommand **diffs**, **adds**, and **updates** the given subtrees (or all) in the current Git repository, based on their paths/prefixes/basenames.
+Are your Git repository's **subtrees** up to date? **Can't remember the remote** you pulled them from? This Git subcommand **diffs**, **adds**, and **updates** the given subtrees (or all) in the current Git repository, finding their remote based on their paths/prefixes/basenames.
 
 ## Example
 
@@ -24,7 +24,7 @@ Your subtree remote must be on GitHub. The subtree prefix must match one of the 
 | The basename is a camelized, full GitHub repo name. | path/to/tpope-vim-fireplace |
 | The basename is a short (no author), exact GitHub repo name. | path/to/vim-fireplace |
 
-If your subtree's remote isn't on GitHub or the subtree's prefix doesn't follow these conventions, `git subtree-update` won't help you. But I'm interested in PRs to make this more general!
+If your subtree's remote isn't on GitHub or the subtree's prefix doesn't follow these conventions, `git subtree-remote` won't help you. But I'm interested in PRs to make this more general!
 
 Also, keep an eye on the author of [the above article][The power of Git subtree]. The author is getting Git to record `git-subtree-repo: <repo-url-here>` in subtree commits. That would make this project vastly simpler. Or outright foldable into Git's own subtree command.
 
@@ -42,7 +42,7 @@ Run the following in a Git repository with subtrees.
 See what subtrees are outdated.
 
 ```zsh
-git subtree-update diff (path/to/some/subtree/prefix...|--all)
+git subtree-remote diff (path/to/some/subtree/prefix...|--all)
 ```
 
 ### Pull
@@ -50,7 +50,7 @@ git subtree-update diff (path/to/some/subtree/prefix...|--all)
 Add or update the given subtrees.
 
 ```zsh
-git subtree-update pull (path/to/some/subtree/prefix...|--all)
+git subtree-remote pull (path/to/some/subtree/prefix...|--all)
 ```
 
 If the subtree doesn't exist, this is the same as `git subtree add`, but it looks up the GitHub remote for you.

@@ -10,7 +10,7 @@ from setuptools import setup
 
 setup(
     name='git-subtree-remote',
-    version='0.0.1',
+    version='0.1.0',
     url='https://github.com/john-kurkowski/git-subtree-remote',
     description=__doc__,
     packages=find_packages('.'),

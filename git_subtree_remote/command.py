@@ -64,6 +64,7 @@ def pull(is_all, squash, prefixes):
     prefix. Prompts the user when there are multiple possibilities.'''
     local_repo = git.Repo(os.getcwd())
     subtree_remotes = validate_subtree_remotes(local_repo, is_all, prefixes)
+    failures = []
     updating_label = 'Updating {} subtree(s)'.format(len(subtree_remotes))
     with click.progressbar(subtree_remotes, label=updating_label) as progressbar:
         for remote in progressbar:
@@ -79,6 +80,7 @@ def pull(is_all, squash, prefixes):
                 click.echo('') # Newline after surrounding progress bar
                 print_diverged(remote)
                 click.echo('Skipping...')
+                failures.append(remote)
             elif remote.is_ahead:
                 subtree_args.insert(0, 'pull')
                 local_repo.git.subtree(*subtree_args, **subtree_kwargs)
@@ -87,3 +89,9 @@ def pull(is_all, squash, prefixes):
                 print_up_to_date(remote)
 
     click.echo(local_repo.git.status())
+
+    if failures:
+        click.echo()
+        raise click.ClickException('some subtrees were skipped: {}'.format(
+            ', '.join(subtree.repo['html_url'] for subtree in failures)
+        ))

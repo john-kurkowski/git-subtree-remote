@@ -26,6 +26,10 @@ class SubtreeRemote(collections.namedtuple('SubtreeRemote', (
     def is_ahead(self):
         return bool(self.commits_since['ahead_by'])
 
+    @property
+    def is_diverged(self):
+        return self.commits_since['status'] == 'diverged'
+
 
 def rate_limit_find_subtree_remote():
     headers = remote_headers()

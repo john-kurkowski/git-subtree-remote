@@ -6,6 +6,7 @@ import os
 import click
 import git
 
+from .diff import print_diverged
 from .diff import print_subtree_diff
 from .diff import print_up_to_date
 from .local import validate_subtrees
@@ -74,6 +75,10 @@ def pull(is_all, squash, prefixes):
             if not remote.subtree.exists:
                 subtree_args.insert(0, 'add')
                 local_repo.git.subtree(*subtree_args, **subtree_kwargs)
+            elif remote.is_diverged:
+                click.echo('') # Newline after surrounding progress bar
+                print_diverged(remote)
+                click.echo('Skipping...')
             elif remote.is_ahead:
                 subtree_args.insert(0, 'pull')
                 local_repo.git.subtree(*subtree_args, **subtree_kwargs)

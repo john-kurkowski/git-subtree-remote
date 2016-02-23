@@ -22,6 +22,7 @@ def repo_commits_since(repo, since_ref, headers):
             next_commits_url = (commits_resp.links.get('next') or {}).get('url')
 
         return {
+            'status': 'ahead',
             'ahead_by': len(commits),
             'commits': commits,
         }
@@ -32,6 +33,13 @@ def tags_in_commits(repo, commits, headers):
     tags_resp.raise_for_status()
     commits_by_sha = {commit['sha']: commit for commit in commits}
     return [tag for tag in tags_resp.json() if tag['commit']['sha'] in commits_by_sha]
+
+
+def print_diverged(remote):
+    click.echo('{} is diverged from {}.'.format(
+        remote.subtree.prefix,
+        remote.repo['html_url'],
+    ))
 
 
 def print_subtree_diff(subtree_remotes):
@@ -49,6 +57,8 @@ def print_subtree_diff(subtree_remotes):
     for remote in subtree_remotes:
         if not remote.subtree.exists:
             ahead_by = '(new)'
+        elif remote.is_diverged:
+            ahead_by = '(diverged)'
         elif remote.commits_since['ahead_by']:
             ahead_by = remote.commits_since['ahead_by']
         else:

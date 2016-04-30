@@ -49,5 +49,7 @@ def all_subtree_prefixes(local_repo):
 
 
 def last_split_ref_for_prefix(local_repo, prefix):
-    subtree_splits = local_repo.git.log(grep='git-subtree-dir: {}'.format(prefix.rstrip('/')))
+    repo_dir = os.path.join(local_repo.git_dir, os.pardir)
+    repo_relative_prefix = os.path.relpath(prefix, repo_dir).rstrip('/')
+    subtree_splits = local_repo.git.log(grep='git-subtree-dir: {}'.format(repo_relative_prefix))
     return SUBTREE_SPLIT_RE.search(subtree_splits).group('git_subtree_split')

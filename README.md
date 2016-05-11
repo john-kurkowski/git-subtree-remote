@@ -45,6 +45,8 @@ See what subtrees are outdated.
 git subtree-remote diff (path/to/some/subtree/prefix...|--all)
 ```
 
+If the subtree doesn't exist, this will try to find a matching GitHub remote. If found, indicate that `pull`ing would add a new subtree. If not found, exit with error.
+
 ### Pull
 
 Add or update the given subtrees.
